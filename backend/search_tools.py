@@ -100,11 +100,22 @@ class CourseSearchTool(Tool):
                 header += f" - Lesson {lesson_num}"
             header += "]"
             
-            # Track source for the UI
-            source = course_title
+            # Track source for the UI with lesson link
+            source_text = course_title
             if lesson_num is not None:
-                source += f" - Lesson {lesson_num}"
-            sources.append(source)
+                source_text += f" - Lesson {lesson_num}"
+            
+            # Get lesson link if available
+            lesson_link = None
+            if lesson_num is not None:
+                lesson_link = self.store.get_lesson_link(course_title, lesson_num)
+            
+            # Create source object with text and optional link
+            source_obj = {
+                "text": source_text,
+                "link": lesson_link
+            }
+            sources.append(source_obj)
             
             formatted.append(f"{header}\n{doc}")
         
@@ -112,6 +123,83 @@ class CourseSearchTool(Tool):
         self.last_sources = sources
         
         return "\n\n".join(formatted)
+
+
+class CourseOutlineTool(Tool):
+    """Tool for getting course outlines with title, link, and lesson list"""
+    
+    def __init__(self, vector_store: VectorStore):
+        self.store = vector_store
+    
+    def get_tool_definition(self) -> Dict[str, Any]:
+        """Return Anthropic tool definition for this tool"""
+        return {
+            "name": "get_course_outline",
+            "description": "Get course outline with title, link, and complete lesson list",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "course_name": {
+                        "type": "string",
+                        "description": "Course title (partial matches work, e.g. 'MCP', 'Introduction')"
+                    }
+                },
+                "required": ["course_name"]
+            }
+        }
+    
+    def execute(self, course_name: str) -> str:
+        """
+        Execute the course outline tool with given parameters.
+        
+        Args:
+            course_name: Course name to get outline for
+            
+        Returns:
+            Formatted course outline or error message
+        """
+        
+        # Resolve course name to exact title
+        exact_course_title = self.store._resolve_course_name(course_name)
+        
+        if not exact_course_title:
+            return f"No course found matching '{course_name}'"
+        
+        # Get course metadata from catalog
+        try:
+            results = self.store.course_catalog.get(ids=[exact_course_title])
+            if not results or not results['metadatas'] or not results['metadatas'][0]:
+                return f"Course metadata not found for '{exact_course_title}'"
+            
+            metadata = results['metadatas'][0]
+            
+            # Extract course information
+            course_title = metadata.get('title', exact_course_title)
+            course_link = metadata.get('course_link', 'No link available')
+            lessons_json = metadata.get('lessons_json')
+            
+            if not lessons_json:
+                return f"No lesson information found for '{course_title}'"
+            
+            # Parse lessons
+            import json
+            lessons = json.loads(lessons_json)
+            
+            # Format the outline
+            outline = f"**{course_title}**\n"
+            outline += f"Course Link: {course_link}\n\n"
+            outline += "**Lessons:**\n"
+            
+            for lesson in lessons:
+                lesson_num = lesson.get('lesson_number', 'N/A')
+                lesson_title = lesson.get('lesson_title', 'Unknown')
+                outline += f"Lesson {lesson_num}: {lesson_title}\n"
+            
+            return outline
+            
+        except Exception as e:
+            return f"Error retrieving course outline: {str(e)}"
+
 
 class ToolManager:
     """Manages available tools for the AI"""

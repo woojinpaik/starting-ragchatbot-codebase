@@ -5,7 +5,7 @@ const API_URL = '/api';
 let currentSessionId = null;
 
 // DOM elements
-let chatMessages, chatInput, sendButton, totalCourses, courseTitles;
+let chatMessages, chatInput, sendButton, totalCourses, courseTitles, newChatButton;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sendButton = document.getElementById('sendButton');
     totalCourses = document.getElementById('totalCourses');
     courseTitles = document.getElementById('courseTitles');
+    newChatButton = document.getElementById('newChatButton');
     
     setupEventListeners();
     createNewSession();
@@ -29,6 +30,8 @@ function setupEventListeners() {
         if (e.key === 'Enter') sendMessage();
     });
     
+    // New chat button
+    newChatButton.addEventListener('click', startNewChat);
     
     // Suggested questions
     document.querySelectorAll('.suggested-item').forEach(button => {
@@ -122,10 +125,32 @@ function addMessage(content, type, sources = null, isWelcome = false) {
     let html = `<div class="message-content">${displayContent}</div>`;
     
     if (sources && sources.length > 0) {
+        // Process sources to handle both legacy string format and new structured format
+        const formattedSources = sources.map(source => {
+            // Debug: log the source to understand its structure
+            console.log('Source object:', source, 'Type:', typeof source);
+            
+            if (typeof source === 'string') {
+                // Legacy format - return as plain text
+                return source;
+            } else if (source && typeof source === 'object' && source.text) {
+                // New structured format - check if it has a link
+                if (source.link && source.link !== null) {
+                    // Create clickable link that opens in new tab
+                    return `<a href="${escapeHtml(source.link)}" target="_blank" rel="noopener noreferrer" class="source-link">${escapeHtml(source.text)}</a>`;
+                } else {
+                    // No link available - return as plain text
+                    return escapeHtml(source.text);
+                }
+            }
+            // Fallback for unexpected formats
+            return String(source);
+        });
+        
         html += `
             <details class="sources-collapsible">
                 <summary class="sources-header">Sources</summary>
-                <div class="sources-content">${sources.join(', ')}</div>
+                <div class="sources-content">${formattedSources.join(', ')}</div>
             </details>
         `;
     }
@@ -150,6 +175,27 @@ async function createNewSession() {
     currentSessionId = null;
     chatMessages.innerHTML = '';
     addMessage('Welcome to the Course Materials Assistant! I can help you with questions about courses, lessons and specific content. What would you like to know?', 'assistant', null, true);
+}
+
+async function startNewChat() {
+    // If there's an active session, clear it on the backend
+    if (currentSessionId) {
+        try {
+            // Clear the session on the backend by sending a request (optional since sessions are lightweight)
+            // The backend will automatically create a new session on next query
+        } catch (error) {
+            console.error('Error clearing session:', error);
+            // Continue anyway as frontend cleanup is more important
+        }
+    }
+    
+    // Clear frontend state and start fresh
+    await createNewSession();
+    
+    // Focus on input for immediate use
+    if (chatInput) {
+        chatInput.focus();
+    }
 }
 
 // Load course statistics
