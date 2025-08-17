@@ -47,6 +47,25 @@ uv run python --version
 uv run python
 ```
 
+### Code Quality Tools
+```bash
+# Format code automatically (recommended before commits)
+./scripts/format-code.sh
+
+# Run basic linting checks (fast, good for development)
+./scripts/lint-check.sh
+
+# Run comprehensive quality checks (includes type checking)
+./scripts/quality-check.sh
+
+# Individual tool commands:
+uv run black .                    # Auto-format code
+uv run black --check .            # Check formatting without changes
+uv run isort .                    # Sort imports
+uv run flake8 .                   # Run linter
+uv run mypy backend/              # Run type checker
+```
+
 ### Database Management
 The ChromaDB database is stored in `backend/chroma_db/` and is automatically initialized on startup. To reset the database, delete the `chroma_db` directory.
 
@@ -150,3 +169,30 @@ Added a new chat button to the left sidebar that allows users to start fresh con
 - `frontend/script.js`: Added `startNewChat()` function and event handler
 
 **Usage:** Click the '+ NEW CHAT' button to clear the current conversation and start a new session while maintaining the same user experience.
+
+## Code Quality Standards
+
+This project maintains high code quality through automated tools and standards:
+
+### Formatting Standards
+- **Black**: Code formatter with 100-character line length
+- **isort**: Import sorting with black-compatible settings
+- All Python code is automatically formatted for consistency
+
+### Linting Standards
+- **flake8**: Style guide enforcement with custom configuration
+- **mypy**: Type checking for improved code reliability
+- Configuration files: `.flake8`, `pyproject.toml`
+
+### Development Workflow
+1. **Before committing**: Run `./scripts/format-code.sh` to auto-format code
+2. **During development**: Use `./scripts/lint-check.sh` for quick quality checks
+3. **Before PR/deployment**: Run `./scripts/quality-check.sh` for comprehensive validation
+
+### Quality Tools Configuration
+- **Line length**: 100 characters (more readable than 88, less than 120)
+- **Type checking**: Gradual typing with lenient settings for existing code
+- **Import organization**: Black-compatible import sorting
+- **Error tolerance**: Balanced approach between strict standards and development velocity
+
+The quality tools are configured to work together harmoniously and provide immediate feedback during development.
